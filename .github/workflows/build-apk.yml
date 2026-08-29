@@ -1,0 +1,67 @@
+name: Build PINKA Ai APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android wrapper
+        run: |
+          cp pubspec.yaml /tmp/pinka_pubspec.yaml
+          cp -R lib /tmp/pinka_lib
+          cp -R assets /tmp/pinka_assets
+          flutter create . --platforms=android --org com.pinkaai --project-name pinka_ai
+          cp /tmp/pinka_pubspec.yaml pubspec.yaml
+          rm -rf lib assets
+          cp -R /tmp/pinka_lib lib
+          cp -R /tmp/pinka_assets assets
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android/app/src/main/AndroidManifest.xml')
+          s = p.read_text()
+          s = s.replace('android:label="pinka_ai"', 'android:label="PINKA Ai"')
+          p.write_text(s)
+          PY
+
+      - name: Dependencies
+        run: flutter pub get
+
+      - name: Apply PINKA Ai launcher icon
+        run: dart run flutter_launcher_icons
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Rename APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk PINKA-Ai-v1.0.0.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PINKA-Ai-APK
+          path: PINKA-Ai-v1.0.0.apk
+          if-no-files-found: error
+          retention-days: 30
