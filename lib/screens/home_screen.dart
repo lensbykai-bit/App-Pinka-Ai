@@ -1,8 +1,10 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 import '../widgets/header_network.dart';
 import '../widgets/step_card.dart';
+import 'api_settings_screen.dart';
 import 'workspace_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -38,6 +40,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _openApiSettings() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ApiSettingsScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ready = _video != null || _subtitle != null;
@@ -52,6 +60,15 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 38),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton.filledTonal(
+                      tooltip: 'Gemini API Settings',
+                      onPressed: _openApiSettings,
+                      icon: const Icon(Icons.settings_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
                   const Text(
                     'PINKA Ai',
                     textAlign: TextAlign.center,
@@ -124,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       SizedBox(width: 8),
                       Text(
-                        'PINKA Ai • Pink 5D',
+                        'PINKA Ai • Gemini Connected',
                         style: TextStyle(
                           color: AppTheme.textSecondary,
                           fontSize: 13,
