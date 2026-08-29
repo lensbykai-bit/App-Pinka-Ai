@@ -35,7 +35,7 @@ jobs:
           cp -R assets /tmp/pinka_assets
           flutter create . --platforms=android --org com.pinkaai --project-name pinka_ai
           cp /tmp/pinka_pubspec.yaml pubspec.yaml
-          rm -rf lib assets
+          rm -rf lib assets test
           cp -R /tmp/pinka_lib lib
           cp -R /tmp/pinka_assets assets
           python3 - <<'PY'
