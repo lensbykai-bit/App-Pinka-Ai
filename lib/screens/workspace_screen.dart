@@ -1,7 +1,11 @@
 import 'dart:convert';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+
+import '../services/gemini_service.dart';
 import '../theme/app_theme.dart';
+import 'api_settings_screen.dart';
 
 class WorkspaceScreen extends StatefulWidget {
   final PlatformFile? video;
@@ -15,7 +19,9 @@ class WorkspaceScreen extends StatefulWidget {
 
 class _WorkspaceScreenState extends State<WorkspaceScreen> {
   late final TextEditingController _controller;
+  final _gemini = GeminiService();
   String _language = 'Khmer';
+  bool _translating = false;
 
   @override
   void initState() {
@@ -39,52 +45,52 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     }
   }
 
+  Future<void> _openApiSettings() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ApiSettingsScreen()),
+    );
+  }
+
+  Future<void> _translate() async {
+    if (_controller.text.trim().isEmpty) {
+      _show('សូមបញ្ចូល Subtitle ឬ Script ជាមុនសិន');
+      return;
+    }
+
+    if (!await _gemini.hasApiKey()) {
+      if (!mounted) return;
+      _show('សូមដាក់ Gemini API Key ជាមុនសិន');
+      await _openApiSettings();
+      return;
+    }
+
+    setState(() => _translating = true);
+    try {
+      final translated = await _gemini.translateSubtitle(
+        text: _controller.text,
+        targetLanguage: _language,
+      );
+      if (!mounted) return;
+      _controller.text = translated;
+      _show('បកប្រែទៅ $_language បានជោគជ័យ ✅');
+    } catch (e) {
+      if (!mounted) return;
+      _show('Translate Error: $e');
+    } finally {
+      if (mounted) setState(() => _translating = false);
+    }
+  }
+
+  void _show(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
-  }
-
-  void _showNotice() {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFF151922),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 36),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.auto_awesome_rounded, color: AppTheme.pink),
-                SizedBox(width: 10),
-                Text(
-                  'PINKA Ai',
-                  style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            const Text(
-              'Version 1 មាន UI, file picker និង subtitle workspace។ មុខងារ AI translation/voice ត្រូវភ្ជាប់ API ឬ backend បន្ថែម។',
-              style: TextStyle(color: AppTheme.textSecondary, height: 1.5),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('យល់ព្រម'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -95,6 +101,13 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           'PINKA Ai Workspace',
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Gemini API Settings',
+            onPressed: _translating ? null : _openApiSettings,
+            icon: const Icon(Icons.settings_rounded),
+          ),
+        ],
       ),
       body: SafeArea(
         child: ListView(
@@ -137,13 +150,19 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                       'Chinese',
                       'Thai',
                       'Vietnamese',
+                      'Japanese',
+                      'Korean',
+                      'French',
+                      'Spanish',
                     ]
                         .map(
                           (e) => DropdownMenuItem(value: e, child: Text(e)),
                         )
                         .toList(),
-                    onChanged: (value) =>
-                        setState(() => _language = value ?? 'Khmer'),
+                    onChanged: _translating
+                        ? null
+                        : (value) =>
+                            setState(() => _language = value ?? 'Khmer'),
                   ),
                 ],
               ),
@@ -162,6 +181,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                     controller: _controller,
                     minLines: 10,
                     maxLines: 18,
+                    enabled: !_translating,
                     decoration: const InputDecoration(
                       hintText: 'បញ្ចូល subtitle ឬ script នៅទីនេះ…',
                       filled: true,
@@ -176,10 +196,19 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
             SizedBox(
               height: 58,
               child: FilledButton.icon(
-                onPressed: _showNotice,
-                icon: const Icon(Icons.auto_awesome_rounded),
+                onPressed: _translating ? null : _translate,
+                icon: _translating
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.auto_awesome_rounded),
                 label: Text(
-                  'បកប្រែទៅ $_language',
+                  _translating ? 'កំពុងបកប្រែ…' : 'បកប្រែទៅ $_language',
                   style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
@@ -191,6 +220,15 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                     borderRadius: BorderRadius.circular(18),
                   ),
                 ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'AI Translation • Gemini 3.7 Flash',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 12,
               ),
             ),
           ],
