@@ -64,12 +64,12 @@ jobs:
         run: flutter build apk --release
 
       - name: Rename APK
-        run: cp build/app/outputs/flutter-apk/app-release.apk PINKA-Ai-v1.1.0-Gemini.apk
+        run: cp build/app/outputs/flutter-apk/app-release.apk PINKA-Ai-v1.2.0.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PINKA-Ai-v1.1.0-Gemini-APK
-          path: PINKA-Ai-v1.1.0-Gemini.apk
+          name: PINKA-Ai-v1.2.0-APK
+          path: PINKA-Ai-v1.2.0.apk
           if-no-files-found: error
           retention-days: 30
